@@ -37,6 +37,13 @@ def analyze_document(document_text: str) -> dict:
     # Extract the text content from Claude's response
     raw_output = response.content[0].text
 
+    # Strip markdown code fences if Claude wrapped the JSON in ```json ... ```
+    raw_output = raw_output.strip()
+    if raw_output.startswith("```"):
+        raw_output = raw_output.split("\n", 1)[-1]  # remove first line (```json)
+        raw_output = raw_output.rsplit("```", 1)[0]  # remove closing ```
+        raw_output = raw_output.strip()
+
     # Parse the JSON string into a Python dict
     extracted_data = json.loads(raw_output)
 
