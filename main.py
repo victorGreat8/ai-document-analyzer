@@ -11,6 +11,7 @@ import os
 from dotenv import load_dotenv
 from analyzer import analyze_document
 from display import display_results
+from saver import save_result
 
 # Load ANTHROPIC_API_KEY from .env file
 load_dotenv()
@@ -27,17 +28,24 @@ def read_document(file_path: str) -> str:
 
 
 def main():
-    # Use a custom file path if provided, otherwise use the sample
-    file_path = sys.argv[1] if len(sys.argv) > 1 else "sample_docs/sample.txt"
+    folder = sys.argv[1] if len(sys.argv) > 1 else "sample_docs"
 
-    print(f"Reading document: {file_path}")
-    document_text = read_document(file_path)
+    txt_files = [f for f in os.listdir(folder) if f.endswith(".txt")]
 
-    # Send to Claude and get structured data back
-    extracted_data = analyze_document(document_text)
+    if not txt_files:
+        print(f"No .txt files found in '{folder}'")
+        sys.exit(1)
 
-    # Print the results
-    display_results(extracted_data)
+    for filename in txt_files:
+        path = os.path.join(folder, filename)
+        print(f"\nReading document: {path}")
+        document_text = read_document(path)
+
+        extracted_data = analyze_document(document_text)
+        display_results(extracted_data)
+
+        saved_path = save_result(filename, extracted_data)
+        print(f"  Result saved to: {saved_path}")
 
 
 if __name__ == "__main__":

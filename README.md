@@ -4,7 +4,7 @@ A command-line tool that uses the Claude API to extract structured information f
 
 ## What it does
 
-Feed it a `.txt` file and it returns:
+Feed it a folder of `.txt` files and it returns:
 
 - Title and document type
 - 2–3 sentence summary
@@ -21,8 +21,9 @@ ai-document-analyzer/
 ├── analyzer.py      # Claude API integration
 ├── extractor.py     # Extraction schema and prompt builder
 ├── display.py       # Terminal output formatting
-├── sample_docs/
-│   └── sample.txt   # Example document (Q1 business review)
+├── saver.py         # Auto-saves results to results/ folder
+├── sample_docs/     # Put your .txt documents here
+├── results/         # Auto-created — JSON result files saved here (gitignored)
 ├── requirements.txt
 └── .env.example
 ```
@@ -44,17 +45,19 @@ cp .env.example .env
 
 ## Usage
 
-Run on the included sample document:
+Run on the included sample documents:
 
 ```bash
-python main.py
+python3 main.py
 ```
 
-Run on your own document:
+Run on a different folder:
 
 ```bash
-python main.py path/to/your/document.txt
+python3 main.py path/to/your/folder
 ```
+
+Every `.txt` file in the folder is analyzed. Results are printed in the terminal and automatically saved as JSON files in the `results/` folder.
 
 ## Customizing what gets extracted
 
