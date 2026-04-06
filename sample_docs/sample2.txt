@@ -1,0 +1,4 @@
+Microsoft partnered with NordicAI to develop a new analytics platform.
+
+The project started in March 2024 and aims to improve data processing
+for enterprise customers.
