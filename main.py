@@ -13,6 +13,7 @@ from pypdf import PdfReader
 from analyzer import analyze_document
 from display import display_results
 from saver import save_result
+from reporter import generate_report
 
 # Load ANTHROPIC_API_KEY from .env file
 load_dotenv()
@@ -41,6 +42,8 @@ def main():
         print(f"No .txt or .pdf files found in '{folder}'")
         sys.exit(1)
 
+    all_results = []
+
     for filename in txt_files:
         path = os.path.join(folder, filename)
         print(f"\nReading document: {path}")
@@ -51,6 +54,11 @@ def main():
 
         saved_path = save_result(filename, extracted_data)
         print(f"  Result saved to: {saved_path}")
+
+        all_results.append(extracted_data)
+
+    report_path = generate_report(all_results)
+    print(f"\n  HTML report saved to: {report_path}")
 
 
 if __name__ == "__main__":
