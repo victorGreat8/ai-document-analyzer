@@ -7,10 +7,31 @@ Example: results/sample_2026-04-05_14-32-10.json
 
 import json
 import os
+import glob
 from datetime import datetime
 
 
 RESULTS_DIR = "results"
+
+
+def find_cached_result(filename: str) -> dict | None:
+    """
+    Looks for an existing JSON result for this document in results/.
+    Returns the cached data if found, otherwise None.
+
+    Args:
+        filename: The original document filename (e.g. 'sample.txt')
+    """
+    base = os.path.splitext(filename)[0]
+    pattern = os.path.join(RESULTS_DIR, f"{base}_*.json")
+    matches = sorted(glob.glob(pattern))
+
+    if not matches:
+        return None
+
+    # Load the most recent match
+    with open(matches[-1], "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 def save_result(filename: str, data: dict) -> str:

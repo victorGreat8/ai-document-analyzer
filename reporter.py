@@ -1,37 +1,73 @@
 """
-reporter.py — Generates a combined HTML report for all analyzed documents.
+reporter.py — Generates a persistent index.html with full history.
 
-Called once at the end of a run with all results collected.
-Output: results/report_YYYY-MM-DD_HH-MM-SS.html
+Reads all JSON files ever saved in results/, groups them by date,
+and rebuilds results/index.html after every run.
 """
 
+import json
 import os
+import re
+import glob
 from datetime import datetime
 
 RESULTS_DIR = "results"
+INDEX_PATH = os.path.join(RESULTS_DIR, "index.html")
 
 
-def generate_report(results: list[dict]) -> str:
+def generate_report() -> str:
     """
-    Builds a single HTML report from a list of extracted document results.
-
-    Args:
-        results: List of dicts, each being one document's extracted data
+    Scans all JSON files in results/, groups by date, and writes index.html.
 
     Returns:
-        The path to the saved HTML file
+        Path to the saved index.html
     """
     os.makedirs(RESULTS_DIR, exist_ok=True)
 
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    output_path = os.path.join(RESULTS_DIR, f"report_{timestamp}.html")
+    grouped = _load_and_group_results()
+    html = _build_html(grouped)
 
-    html = _build_html(results, timestamp)
-
-    with open(output_path, "w", encoding="utf-8") as f:
+    with open(INDEX_PATH, "w", encoding="utf-8") as f:
         f.write(html)
 
-    return output_path
+    return INDEX_PATH
+
+
+def _load_and_group_results() -> dict[str, list[dict]]:
+    """
+    Loads all JSON files from results/ and groups them by date (YYYY-MM-DD).
+    Returns a dict ordered most recent date first.
+    """
+    pattern = os.path.join(RESULTS_DIR, "*.json")
+    json_files = sorted(glob.glob(pattern), reverse=True)
+
+    grouped: dict[str, list[dict]] = {}
+
+    for filepath in json_files:
+        filename = os.path.basename(filepath)
+        date = _extract_date(filename)
+        if not date:
+            continue
+
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            grouped.setdefault(date, []).append(data)
+        except (json.JSONDecodeError, OSError):
+            continue
+
+    return grouped
+
+
+def _extract_date(filename: str) -> str | None:
+    """Extracts YYYY-MM-DD from a filename like sample_2026-04-15_15-10-07.json"""
+    match = re.search(r"(\d{4}-\d{2}-\d{2})_\d{2}-\d{2}-\d{2}\.json$", filename)
+    return match.group(1) if match else None
+
+
+def _format_date_label(date_str: str) -> str:
+    """Converts '2026-04-15' to 'April 15, 2026'"""
+    return datetime.strptime(date_str, "%Y-%m-%d").strftime("%B %d, %Y")
 
 
 def _sentiment_color(sentiment: str) -> str:
@@ -43,33 +79,30 @@ def _sentiment_color(sentiment: str) -> str:
     return colors.get(sentiment.lower(), "#94a3b8")
 
 
-def _build_cards(results: list[dict]) -> str:
-    cards = []
+def _build_card(data: dict) -> str:
+    sentiment = data.get("sentiment", "").lower()
+    color = _sentiment_color(sentiment)
 
-    for data in results:
-        sentiment = data.get("sentiment", "").lower()
-        color = _sentiment_color(sentiment)
+    key_points = data.get("key_points", [])
+    key_points_html = "".join(f"<li>{p}</li>" for p in key_points)
 
-        key_points = data.get("key_points", [])
-        key_points_html = "".join(f"<li>{p}</li>" for p in key_points)
+    action_items = data.get("action_items", [])
+    action_items_html = "".join(f"<li>{a}</li>" for a in action_items)
 
-        action_items = data.get("action_items", [])
-        action_items_html = "".join(f"<li>{a}</li>" for a in action_items)
+    entities = data.get("entities", {})
+    people = ", ".join(entities.get("people", [])) or "—"
+    orgs = ", ".join(entities.get("organizations", [])) or "—"
+    dates = ", ".join(entities.get("dates", [])) or "—"
 
-        entities = data.get("entities", {})
-        people = ", ".join(entities.get("people", [])) or "—"
-        orgs = ", ".join(entities.get("organizations", [])) or "—"
-        dates = ", ".join(entities.get("dates", [])) or "—"
-
-        actions_block = ""
-        if action_items:
-            actions_block = f"""
+    actions_block = ""
+    if action_items:
+        actions_block = f"""
             <div class="section">
                 <h3>Action Items</h3>
                 <ul>{action_items_html}</ul>
             </div>"""
 
-        cards.append(f"""
+    return f"""
         <div class="card">
             <div class="card-header">
                 <div>
@@ -80,17 +113,14 @@ def _build_cards(results: list[dict]) -> str:
                     {sentiment.capitalize()}
                 </span>
             </div>
-
             <div class="section">
                 <h3>Summary</h3>
                 <p>{data.get("summary", "")}</p>
             </div>
-
             <div class="section">
                 <h3>Key Points</h3>
                 <ul>{key_points_html}</ul>
             </div>
-
             <div class="section">
                 <h3>Entities</h3>
                 <table class="entity-table">
@@ -100,22 +130,48 @@ def _build_cards(results: list[dict]) -> str:
                 </table>
             </div>
             {actions_block}
-        </div>""")
-
-    return "\n".join(cards)
+        </div>"""
 
 
-def _build_html(results: list[dict], timestamp: str) -> str:
-    date_label = datetime.now().strftime("%B %d, %Y")
-    doc_count = len(results)
-    cards_html = _build_cards(results)
+def _build_html(grouped: dict[str, list[dict]]) -> str:
+    total = sum(len(docs) for docs in grouped.values())
+    today = datetime.now().strftime("%B %d, %Y")
+    dates = sorted(grouped.keys(), reverse=True)
+
+    sections_html = ""
+    for i, date in enumerate(dates):
+        docs = grouped[date]
+        label = _format_date_label(date)
+        count = len(docs)
+        cards_html = "".join(_build_card(d) for d in docs)
+
+        if i == 0:
+            # Most recent — shown open
+            sections_html += f"""
+        <div class="run-section">
+            <div class="run-header">
+                <span class="run-date">{label}</span>
+                <span class="run-count">{count} document{"s" if count != 1 else ""}</span>
+            </div>
+            {cards_html}
+        </div>"""
+        else:
+            # Older runs — collapsible
+            sections_html += f"""
+        <details class="run-section">
+            <summary class="run-header">
+                <span class="run-date">{label}</span>
+                <span class="run-count">{count} document{"s" if count != 1 else ""}</span>
+            </summary>
+            {cards_html}
+        </details>"""
 
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document Analysis Report — {date_label}</title>
+    <title>Document Analysis — History</title>
     <style>
         * {{ box-sizing: border-box; margin: 0; padding: 0; }}
 
@@ -142,12 +198,53 @@ def _build_html(results: list[dict], timestamp: str) -> str:
             font-size: 0.95rem;
         }}
 
+        .run-section {{
+            max-width: 860px;
+            margin: 0 auto 32px;
+        }}
+
+        .run-header {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            cursor: pointer;
+            list-style: none;
+        }}
+
+        details > summary {{ list-style: none; }}
+        details > summary::-webkit-details-marker {{ display: none; }}
+
+        .run-date {{
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1e293b;
+        }}
+
+        .run-count {{
+            font-size: 0.8rem;
+            color: #94a3b8;
+            background: #e2e8f0;
+            padding: 2px 10px;
+            border-radius: 999px;
+        }}
+
+        details .run-header::before {{
+            content: "▶";
+            font-size: 0.7rem;
+            color: #94a3b8;
+            transition: transform 0.2s;
+        }}
+
+        details[open] .run-header::before {{
+            transform: rotate(90deg);
+        }}
+
         .card {{
             background: white;
             border-radius: 12px;
             padding: 28px;
-            max-width: 860px;
-            margin: 0 auto 24px;
+            margin-bottom: 16px;
             box-shadow: 0 1px 4px rgba(0,0,0,0.08);
         }}
 
@@ -215,18 +312,14 @@ def _build_html(results: list[dict], timestamp: str) -> str:
             width: 130px;
             padding: 3px 0;
         }}
-
-        .entity-table tr td:last-child {{
-            color: #1e293b;
-        }}
     </style>
 </head>
 <body>
     <header>
-        <h1>Document Analysis Report</h1>
-        <p>{date_label} &mdash; {doc_count} document{"s" if doc_count != 1 else ""} analyzed</p>
+        <h1>Document Analysis</h1>
+        <p>Last updated {today} &mdash; {total} document{"s" if total != 1 else ""} in history</p>
     </header>
 
-    {cards_html}
+    {sections_html}
 </body>
 </html>"""

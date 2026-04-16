@@ -26,7 +26,7 @@ ai-document-analyzer/
 ├── extractor.py     # Extraction schema and prompt builder
 ├── display.py       # Terminal output formatting
 ├── saver.py         # Auto-saves each result as JSON
-├── reporter.py      # Generates combined HTML report
+├── reporter.py      # Generates persistent history HTML report
 ├── sample_docs/     # Drop your .txt and .pdf files here
 ├── results/         # Auto-created — JSON + HTML output (gitignored)
 ├── requirements.txt
@@ -66,8 +66,9 @@ python main.py path/to/your/folder
 ```
 
 Both `.txt` and `.pdf` files are supported. After each run:
-- Each document is saved as a JSON file in `results/`
-- A combined HTML report is saved in `results/` — open it in any browser to view all results in one place
+- Already analyzed documents are skipped — only new files are sent to Claude
+- Each new result is saved as a JSON file in `results/`
+- `results/index.html` is rebuilt with the full history — open it in any browser to browse all documents ever analyzed, grouped by date
 
 ## Customizing what gets extracted
 
