@@ -2,7 +2,7 @@
 
 > This project was built with [Claude Code](https://claude.ai/code) by Anthropic. The code, structure, and features were developed through a conversation-driven workflow with Claude as the coding assistant.
 
-A command-line tool that uses the Claude API to extract structured information from text and PDF documents.
+A web-based tool that uses the Claude API to extract structured information from text and PDF documents, with a local browser interface for viewing results and triggering analysis.
 
 ## What it does
 
@@ -27,6 +27,7 @@ ai-document-analyzer/
 ├── display.py       # Terminal output formatting
 ├── saver.py         # Auto-saves each result as JSON
 ├── reporter.py      # Generates persistent history HTML report
+├── app.py           # Flask web server
 ├── sample_docs/     # Drop your .txt and .pdf files here
 ├── results/         # Auto-created — JSON + HTML output (gitignored)
 ├── requirements.txt
@@ -52,23 +53,21 @@ cp .env.example .env
 
 ## Usage
 
-Analyze all documents in the default folder:
+Start the web server:
 
 ```bash
 source venv/bin/activate
-python main.py
+python app.py
 ```
 
-Analyze documents in a different folder:
+Then open `http://localhost:8080` in your browser.
 
-```bash
-python main.py path/to/your/folder
-```
+From there:
+1. Drop `.txt` or `.pdf` files into `sample_docs/`
+2. Click **Run Analysis** in the browser
+3. Results appear on the page automatically
 
-Both `.txt` and `.pdf` files are supported. After each run:
-- Already analyzed documents are skipped — only new files are sent to Claude
-- Each new result is saved as a JSON file in `results/`
-- `results/index.html` is rebuilt with the full history — open it in any browser to browse all documents ever analyzed, grouped by date
+Already analyzed documents are skipped — only new files are sent to Claude. All results are stored as JSON in `results/` and displayed in a history view grouped by date.
 
 ## Customizing what gets extracted
 

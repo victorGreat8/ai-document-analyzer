@@ -185,6 +185,9 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
         header {{
             max-width: 860px;
             margin: 0 auto 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }}
 
         header h1 {{
@@ -196,6 +199,23 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
             color: #64748b;
             margin-top: 4px;
             font-size: 0.95rem;
+        }}
+
+        .run-btn {{
+            background: #1e293b;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            white-space: nowrap;
+        }}
+
+        .run-btn:hover {{
+            background: #334155;
         }}
 
         .run-section {{
@@ -316,8 +336,11 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
 </head>
 <body>
     <header>
-        <h1>Document Analysis</h1>
-        <p>Last updated {today} &mdash; {total} document{"s" if total != 1 else ""} in history</p>
+        <div>
+            <h1>Document Analysis</h1>
+            <p>Last updated {today} &mdash; {total} document{"s" if total != 1 else ""} in history</p>
+        </div>
+        <a href="/run" class="run-btn">Run Analysis</a>
     </header>
 
     {sections_html}
