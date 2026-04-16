@@ -63,11 +63,11 @@ python app.py
 Then open `http://localhost:8080` in your browser.
 
 From there:
-1. Drop `.txt` or `.pdf` files into `sample_docs/`
-2. Click **Run Analysis** in the browser
-3. Results appear on the page automatically
+1. Drag and drop a `.txt` or `.pdf` file onto the drop zone on the page — it gets saved to `sample_docs/` automatically
+2. Click **Run Analysis** to analyze any new files
+3. Results appear on the page grouped by run, newest at the top
 
-Already analyzed documents are skipped — only new files are sent to Claude. All results are stored as JSON in `results/` and displayed in a history view grouped by date.
+Already analyzed documents are skipped — only new files are sent to Claude. All results are stored as JSON in `results/` and displayed in a full history view with each run collapsible.
 
 ## Customizing what gets extracted
 

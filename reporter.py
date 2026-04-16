@@ -35,39 +35,65 @@ def generate_report() -> str:
 
 def _load_and_group_results() -> dict[str, list[dict]]:
     """
-    Loads all JSON files from results/ and groups them by date (YYYY-MM-DD).
-    Returns a dict ordered most recent date first.
+    Loads all JSON files from results/, deduplicates (keeps newest per document),
+    groups into runs (files within 2 minutes = same run), newest run first.
     """
     pattern = os.path.join(RESULTS_DIR, "*.json")
-    json_files = sorted(glob.glob(pattern), reverse=True)
+    json_files = sorted(glob.glob(pattern), reverse=True)  # newest first
 
-    grouped: dict[str, list[dict]] = {}
+    # Deduplicate — since files are sorted newest first, first seen = keep
+    seen_docs: set[str] = set()
+    entries = []
 
     for filepath in json_files:
         filename = os.path.basename(filepath)
-        date = _extract_date(filename)
-        if not date:
+        ts = _extract_timestamp(filename)
+        if not ts:
             continue
+
+        # Strip timestamp to get base document name e.g. "sample1"
+        stem = filename.replace(f"_{ts}.json", "")
+        if stem in seen_docs:
+            continue
+        seen_docs.add(stem)
 
         try:
             with open(filepath, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            grouped.setdefault(date, []).append(data)
+            entries.append((ts, data))
         except (json.JSONDecodeError, OSError):
             continue
 
-    return grouped
+    if not entries:
+        return {}
+
+    # Re-sort by timestamp newest first (dedup broke the order)
+    entries.sort(key=lambda x: x[0], reverse=True)
+
+    # Group into runs — files within 120 seconds of each other = same run
+    runs: dict[str, list[dict]] = {}
+    current_run_key = None
+    current_run_time = None
+
+    for ts, data in entries:
+        dt = datetime.strptime(ts, "%Y-%m-%d_%H-%M-%S")
+        if current_run_time is None or (current_run_time - dt).total_seconds() > 120:
+            current_run_key = ts
+            current_run_time = dt
+        runs.setdefault(current_run_key, []).append(data)
+
+    return runs
 
 
-def _extract_date(filename: str) -> str | None:
-    """Extracts YYYY-MM-DD from a filename like sample_2026-04-15_15-10-07.json"""
-    match = re.search(r"(\d{4}-\d{2}-\d{2})_\d{2}-\d{2}-\d{2}\.json$", filename)
+def _extract_timestamp(filename: str) -> str | None:
+    """Extracts YYYY-MM-DD_HH-MM-SS from a filename like sample_2026-04-15_15-10-07.json"""
+    match = re.search(r"(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})\.json$", filename)
     return match.group(1) if match else None
 
 
-def _format_date_label(date_str: str) -> str:
-    """Converts '2026-04-15' to 'April 15, 2026'"""
-    return datetime.strptime(date_str, "%Y-%m-%d").strftime("%B %d, %Y")
+def _format_run_label(ts: str) -> str:
+    """Converts '2026-04-15_15-10-07' to 'April 15, 2026 at 15:10'"""
+    return datetime.strptime(ts, "%Y-%m-%d_%H-%M-%S").strftime("%B %d, %Y at %H:%M")
 
 
 def _sentiment_color(sentiment: str) -> str:
@@ -141,7 +167,7 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
     sections_html = ""
     for i, date in enumerate(dates):
         docs = grouped[date]
-        label = _format_date_label(date)
+        label = _format_run_label(date)
         count = len(docs)
         cards_html = "".join(_build_card(d) for d in docs)
 
@@ -332,6 +358,36 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
             width: 130px;
             padding: 3px 0;
         }}
+
+        .drop-zone {{
+            max-width: 860px;
+            margin: 0 auto 32px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 32px;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.95rem;
+            transition: border-color 0.2s, background 0.2s;
+            cursor: pointer;
+        }}
+
+        .drop-zone.dragover {{
+            border-color: #1e293b;
+            background: #f8fafc;
+            color: #1e293b;
+        }}
+
+        .drop-zone.uploaded {{
+            border-color: #22c55e;
+            background: #f0fdf4;
+            color: #16a34a;
+        }}
+
+        .drop-zone p {{
+            margin-top: 6px;
+            font-size: 0.85rem;
+        }}
     </style>
 </head>
 <body>
@@ -343,6 +399,51 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
         <a href="/run" class="run-btn">Run Analysis</a>
     </header>
 
+    <div class="drop-zone" id="dropZone">
+        Drop a .txt or .pdf file here to upload
+        <p>File will be saved to sample_docs/ ready for analysis</p>
+    </div>
+
     {sections_html}
+
+    <script>
+        const zone = document.getElementById('dropZone');
+
+        zone.addEventListener('dragover', (e) => {{
+            e.preventDefault();
+            zone.classList.add('dragover');
+        }});
+
+        zone.addEventListener('dragleave', () => {{
+            zone.classList.remove('dragover');
+        }});
+
+        zone.addEventListener('drop', (e) => {{
+            e.preventDefault();
+            zone.classList.remove('dragover');
+
+            const file = e.dataTransfer.files[0];
+            if (!file) return;
+
+            const allowed = file.name.endsWith('.txt') || file.name.endsWith('.pdf');
+            if (!allowed) {{
+                zone.textContent = 'Only .txt and .pdf files are supported';
+                return;
+            }}
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/upload', {{ method: 'POST', body: formData }})
+                .then(res => res.json())
+                .then(data => {{
+                    zone.classList.add('uploaded');
+                    zone.innerHTML = `✓ "${{file.name}}" uploaded — click Run Analysis to extract`;
+                }})
+                .catch(() => {{
+                    zone.textContent = 'Upload failed. Is the server running?';
+                }});
+        }});
+    </script>
 </body>
 </html>"""
