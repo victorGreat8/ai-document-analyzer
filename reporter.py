@@ -389,6 +389,28 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
             margin-top: 6px;
             font-size: 0.85rem;
         }}
+
+        .run-btn.loading {{
+            background: #475569;
+            cursor: not-allowed;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }}
+
+        .spinner {{
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            flex-shrink: 0;
+        }}
+
+        @keyframes spin {{
+            to {{ transform: rotate(360deg); }}
+        }}
     </style>
 </head>
 <body>
@@ -397,7 +419,7 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
             <h1>Document Analysis</h1>
             <p>Last updated {today} &mdash; {total} document{"s" if total != 1 else ""} in history</p>
         </div>
-        <a href="/run" class="run-btn">Run Analysis</a>
+        <button id="runBtn" class="run-btn" onclick="runAnalysis()">Run Analysis</button>
     </header>
 
     <div class="drop-zone" id="dropZone">
@@ -408,6 +430,31 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
     {sections_html}
 
     <script>
+        function runAnalysis() {{
+            const btn = document.getElementById('runBtn');
+            btn.classList.add('loading');
+            btn.innerHTML = '<div class="spinner"></div> Analyzing...';
+            btn.disabled = true;
+
+            fetch('/run')
+                .then(res => {{
+                    if (res.ok || res.redirected) {{
+                        window.location.reload();
+                    }} else {{
+                        btn.classList.remove('loading');
+                        btn.innerHTML = 'Run Analysis';
+                        btn.disabled = false;
+                        alert('Analysis failed. Check the terminal for details.');
+                    }}
+                }})
+                .catch(() => {{
+                    btn.classList.remove('loading');
+                    btn.innerHTML = 'Run Analysis';
+                    btn.disabled = false;
+                    alert('Could not reach the server.');
+                }});
+        }}
+
         const zone = document.getElementById('dropZone');
 
         zone.addEventListener('dragover', (e) => {{
