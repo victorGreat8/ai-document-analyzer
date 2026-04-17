@@ -471,10 +471,12 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
                     if (res.ok || res.redirected) {{
                         window.location.reload();
                     }} else {{
-                        btn.classList.remove('loading');
-                        btn.innerHTML = 'Run Analysis';
-                        btn.disabled = false;
-                        alert('Analysis failed. Check the terminal for details.');
+                        return res.json().then(data => {{
+                            btn.classList.remove('loading');
+                            btn.innerHTML = 'Run Analysis';
+                            btn.disabled = false;
+                            alert(data.error || 'Analysis failed. Check the terminal for details.');
+                        }});
                     }}
                 }})
                 .catch(() => {{

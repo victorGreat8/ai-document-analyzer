@@ -69,6 +69,10 @@ def delete_result(stem):
 @app.route("/run")
 def run_analysis():
     """Triggers main.py and redirects back to the index when done."""
+    docs = [f for f in os.listdir(SAMPLE_DOCS_DIR) if f.endswith((".txt", ".pdf"))]
+    if not docs:
+        return jsonify({"error": "No documents found in sample_docs/. Upload a file first."}), 400
+
     try:
         subprocess.run([sys.executable, "main.py"], check=True)
     except subprocess.CalledProcessError as e:
