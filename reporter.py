@@ -61,7 +61,7 @@ def _load_and_group_results() -> dict[str, list[dict]]:
         try:
             with open(filepath, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            entries.append((ts, data))
+            entries.append((ts, stem, data))
         except (json.JSONDecodeError, OSError):
             continue
 
@@ -76,12 +76,12 @@ def _load_and_group_results() -> dict[str, list[dict]]:
     current_run_key = None
     current_run_time = None
 
-    for ts, data in entries:
+    for ts, stem, data in entries:
         dt = datetime.strptime(ts, "%Y-%m-%d_%H-%M-%S")
         if current_run_time is None or (current_run_time - dt).total_seconds() > 120:
             current_run_key = ts
             current_run_time = dt
-        runs.setdefault(current_run_key, []).append(data)
+        runs.setdefault(current_run_key, []).append((stem, data))
 
     return runs
 
@@ -106,7 +106,8 @@ def _sentiment_color(sentiment: str) -> str:
     return colors.get(sentiment.lower(), "#94a3b8")
 
 
-def _build_card(data: dict) -> str:
+def _build_card(stem: str, data: dict) -> str:
+    stem = html.escape(stem)
     sentiment = data.get("sentiment", "").lower()
     color = _sentiment_color(sentiment)
 
@@ -157,11 +158,12 @@ def _build_card(data: dict) -> str:
                 </table>
             </div>
             {actions_block}
+            <button class="delete-btn" onclick="deleteDoc('{stem}', this)">Delete</button>
         </div>"""
 
 
 def _build_html(grouped: dict[str, list[dict]]) -> str:
-    total = sum(len(docs) for docs in grouped.values())
+    total = sum(len(docs) for docs in grouped.values())  # each docs is list of (stem, data) tuples
     today = datetime.now().strftime("%B %d, %Y")
     dates = sorted(grouped.keys(), reverse=True)
 
@@ -170,7 +172,7 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
         docs = grouped[date]
         label = _format_run_label(date)
         count = len(docs)
-        cards_html = "".join(_build_card(d) for d in docs)
+        cards_html = "".join(_build_card(s, d) for s, d in docs)
 
         if i == 0:
             # Most recent — shown open
@@ -360,6 +362,26 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
             padding: 3px 0;
         }}
 
+        .delete-btn {{
+            display: block;
+            margin-top: 20px;
+            margin-left: auto;
+            background: none;
+            border: 1px solid #fca5a5;
+            color: #ef4444;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 5px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+        }}
+
+        .delete-btn:hover {{
+            background: #ef4444;
+            color: white;
+            border-color: #ef4444;
+        }}
+
         .drop-zone {{
             max-width: 860px;
             margin: 0 auto 32px;
@@ -430,6 +452,14 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
     {sections_html}
 
     <script>
+        function deleteDoc(stem, btn) {{
+            if (!confirm('Delete this document from history?')) return;
+            fetch('/delete/' + stem, {{ method: 'POST' }})
+                .then(res => res.json())
+                .then(() => window.location.reload())
+                .catch(() => alert('Delete failed.'));
+        }}
+
         function runAnalysis() {{
             const btn = document.getElementById('runBtn');
             btn.classList.add('loading');

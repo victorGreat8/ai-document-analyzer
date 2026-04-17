@@ -7,7 +7,9 @@ Run with:
 Then open: http://localhost:8080
 """
 
+import glob
 import os
+import re
 import subprocess
 import sys
 from flask import Flask, send_from_directory, redirect, request, jsonify
@@ -47,6 +49,21 @@ def upload_file():
     file.save(save_path)
 
     return jsonify({"success": True, "filename": filename})
+
+
+@app.route("/delete/<stem>", methods=["POST"])
+def delete_result(stem):
+    """Deletes all JSON files for a document stem and rebuilds the report."""
+    if not re.fullmatch(r"[\w\-. ]+", stem):
+        return jsonify({"error": "Invalid document name"}), 400
+
+    pattern = os.path.join(RESULTS_DIR, f"{stem}_*.json")
+    for f in glob.glob(pattern):
+        os.remove(f)
+
+    from reporter import generate_report
+    generate_report()
+    return jsonify({"success": True})
 
 
 @app.route("/run")
