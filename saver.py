@@ -7,6 +7,7 @@ Example: results/sample_2026-04-05_14-32-10.json
 
 import json
 import os
+import re
 import glob
 from datetime import datetime
 
@@ -29,8 +30,10 @@ def find_cached_result(filename: str) -> dict | None:
     if not matches:
         return None
 
-    # Load the most recent match
-    with open(matches[-1], "r", encoding="utf-8") as f:
+    # Sort by timestamp in filename to get the most recent
+    matches.sort(key=lambda f: re.search(r"\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}", f).group(), reverse=True)
+
+    with open(matches[0], "r", encoding="utf-8") as f:
         return json.load(f)
 
 

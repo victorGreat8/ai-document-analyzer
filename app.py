@@ -11,6 +11,7 @@ import os
 import subprocess
 import sys
 from flask import Flask, send_from_directory, redirect, request, jsonify
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
@@ -36,21 +37,25 @@ def upload_file():
         return jsonify({"error": "No file provided"}), 400
 
     file = request.files["file"]
-    ext = os.path.splitext(file.filename)[1].lower()
+    filename = secure_filename(file.filename)
+    ext = os.path.splitext(filename)[1].lower()
 
     if ext not in ALLOWED_EXTENSIONS:
         return jsonify({"error": "Only .txt and .pdf files are allowed"}), 400
 
-    save_path = os.path.join(SAMPLE_DOCS_DIR, file.filename)
+    save_path = os.path.join(SAMPLE_DOCS_DIR, filename)
     file.save(save_path)
 
-    return jsonify({"success": True, "filename": file.filename})
+    return jsonify({"success": True, "filename": filename})
 
 
 @app.route("/run")
 def run_analysis():
     """Triggers main.py and redirects back to the index when done."""
-    subprocess.run([sys.executable, "main.py"], check=True)
+    try:
+        subprocess.run([sys.executable, "main.py"], check=True)
+    except subprocess.CalledProcessError as e:
+        return f"<p>Analysis failed: {e}</p><a href='/'>Go back</a>", 500
     return redirect("/")
 
 

@@ -5,6 +5,7 @@ Reads all JSON files ever saved in results/, groups them by date,
 and rebuilds results/index.html after every run.
 """
 
+import html
 import json
 import os
 import re
@@ -110,15 +111,15 @@ def _build_card(data: dict) -> str:
     color = _sentiment_color(sentiment)
 
     key_points = data.get("key_points", [])
-    key_points_html = "".join(f"<li>{p}</li>" for p in key_points)
+    key_points_html = "".join(f"<li>{html.escape(p)}</li>" for p in key_points)
 
     action_items = data.get("action_items", [])
-    action_items_html = "".join(f"<li>{a}</li>" for a in action_items)
+    action_items_html = "".join(f"<li>{html.escape(a)}</li>" for a in action_items)
 
     entities = data.get("entities", {})
-    people = ", ".join(entities.get("people", [])) or "—"
-    orgs = ", ".join(entities.get("organizations", [])) or "—"
-    dates = ", ".join(entities.get("dates", [])) or "—"
+    people = html.escape(", ".join(entities.get("people", [])) or "—")
+    orgs = html.escape(", ".join(entities.get("organizations", [])) or "—")
+    dates = html.escape(", ".join(entities.get("dates", [])) or "—")
 
     actions_block = ""
     if action_items:
@@ -132,8 +133,8 @@ def _build_card(data: dict) -> str:
         <div class="card">
             <div class="card-header">
                 <div>
-                    <div class="doc-title">{data.get("title", "Untitled")}</div>
-                    <div class="doc-type">{data.get("document_type", "")}</div>
+                    <div class="doc-title">{html.escape(data.get("title", "Untitled"))}</div>
+                    <div class="doc-type">{html.escape(data.get("document_type", ""))}</div>
                 </div>
                 <span class="sentiment-badge" style="background:{color}">
                     {sentiment.capitalize()}
@@ -141,7 +142,7 @@ def _build_card(data: dict) -> str:
             </div>
             <div class="section">
                 <h3>Summary</h3>
-                <p>{data.get("summary", "")}</p>
+                <p>{html.escape(data.get("summary", ""))}</p>
             </div>
             <div class="section">
                 <h3>Key Points</h3>

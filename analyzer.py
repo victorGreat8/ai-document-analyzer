@@ -45,6 +45,10 @@ def analyze_document(document_text: str) -> dict:
         raw_output = raw_output.strip()
 
     # Parse the JSON string into a Python dict
-    extracted_data = json.loads(raw_output)
+    try:
+        extracted_data = json.loads(raw_output)
+    except json.JSONDecodeError:
+        print("Error: Claude returned invalid JSON. Skipping this document.")
+        return {}
 
     return extracted_data

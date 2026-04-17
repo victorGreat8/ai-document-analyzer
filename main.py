@@ -3,7 +3,7 @@ main.py — Entry point for the AI Document Analyzer.
 
 Run with:
     python main.py
-    python main.py path/to/your/document.txt
+    python main.py path/to/your/folder
 """
 
 import sys
