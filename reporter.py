@@ -412,6 +412,13 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
             font-size: 0.85rem;
         }}
 
+        .browse-link {{
+            color: #1e293b;
+            font-weight: 600;
+            text-decoration: underline;
+            cursor: pointer;
+        }}
+
         .run-btn.loading {{
             background: #475569;
             cursor: not-allowed;
@@ -445,8 +452,9 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
     </header>
 
     <div class="drop-zone" id="dropZone">
-        Drop a .txt or .pdf file here to upload
-        <p>File will be saved to sample_docs/ ready for analysis</p>
+        Drop a file here or <span class="browse-link">click to browse</span>
+        <p>Supports .txt and .pdf — saved to sample_docs/ ready for analysis</p>
+        <input type="file" id="fileInput" accept=".txt,.pdf" multiple style="display:none">
     </div>
 
     {sections_html}
@@ -488,6 +496,25 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
         }}
 
         const zone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const uploadedNames = [];
+
+        function updateZoneLabel() {{
+            const first = uploadedNames[0];
+            const rest = uploadedNames.length - 1;
+            const label = rest > 0
+                ? `✓ "${{first}}" and ${{rest}} other file${{rest > 1 ? 's' : ''}} uploaded — click Run Analysis to extract`
+                : `✓ "${{first}}" uploaded — click Run Analysis to extract`;
+            zone.classList.add('uploaded');
+            zone.innerHTML = label;
+        }}
+
+        zone.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', () => {{
+            const files = Array.from(fileInput.files);
+            if (files.length) uploadFiles(files);
+        }});
 
         zone.addEventListener('dragover', (e) => {{
             e.preventDefault();
@@ -498,31 +525,33 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
             zone.classList.remove('dragover');
         }});
 
-        zone.addEventListener('drop', (e) => {{
-            e.preventDefault();
-            zone.classList.remove('dragover');
-
-            const file = e.dataTransfer.files[0];
-            if (!file) return;
-
-            const allowed = file.name.endsWith('.txt') || file.name.endsWith('.pdf');
-            if (!allowed) {{
+        function uploadFiles(files) {{
+            const allowed = files.filter(f => f.name.endsWith('.txt') || f.name.endsWith('.pdf'));
+            if (!allowed.length) {{
                 zone.textContent = 'Only .txt and .pdf files are supported';
                 return;
             }}
 
-            const formData = new FormData();
-            formData.append('file', file);
+            const uploads = allowed.map(file => {{
+                const formData = new FormData();
+                formData.append('file', file);
+                return fetch('/upload', {{ method: 'POST', body: formData }})
+                    .then(res => res.json())
+                    .then(() => uploadedNames.push(file.name));
+            }});
 
-            fetch('/upload', {{ method: 'POST', body: formData }})
-                .then(res => res.json())
-                .then(data => {{
-                    zone.classList.add('uploaded');
-                    zone.innerHTML = `✓ "${{file.name}}" uploaded — click Run Analysis to extract`;
-                }})
+            Promise.all(uploads)
+                .then(() => updateZoneLabel())
                 .catch(() => {{
                     zone.textContent = 'Upload failed. Is the server running?';
                 }});
+        }}
+
+        zone.addEventListener('drop', (e) => {{
+            e.preventDefault();
+            zone.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files);
+            if (files.length) uploadFiles(files);
         }});
     </script>
 </body>

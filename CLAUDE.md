@@ -47,6 +47,17 @@ sample_docs/    ← source documents (.txt and .pdf)
 results/        ← gitignored; contains per-document JSON files + index.html
 ```
 
+## How to approach changes
+
+When making a bigger change — adding a feature, fixing multiple files, or changing how something works — always go step by step:
+
+1. State what the change is and why before touching any code
+2. Make one change at a time and explain what each step does
+3. Verify each step works before moving to the next
+4. Don't make several edits at once without explaining them
+
+This keeps the user informed and makes it easy to catch mistakes early.
+
 ## Before committing and pushing to GitHub
 
 Always check if `README.md` needs to be updated to reflect any changes made. Update it if the usage, structure, features, or setup instructions have changed, then include it in the commit.
