@@ -26,10 +26,10 @@ def generate_report() -> str:
     os.makedirs(RESULTS_DIR, exist_ok=True)
 
     grouped = _load_and_group_results()
-    html = _build_html(grouped)
+    content = _build_html(grouped)
 
     with open(INDEX_PATH, "w", encoding="utf-8") as f:
-        f.write(html)
+        f.write(content)
 
     return INDEX_PATH
 
@@ -382,6 +382,66 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
             border-color: #ef4444;
         }}
 
+        .queue-bar {{
+            max-width: 860px;
+            margin: 0 auto 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            border-radius: 10px;
+            padding: 12px 18px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #1e293b;
+            cursor: pointer;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }}
+
+        .queue-bar:hover {{ background: #f8fafc; }}
+
+        .queue-arrow {{
+            font-size: 0.7rem;
+            color: #94a3b8;
+            transition: transform 0.2s;
+        }}
+
+        .queue-list {{
+            max-width: 860px;
+            margin: 0 auto 24px;
+            background: white;
+            border-radius: 0 0 10px 10px;
+            padding: 4px 18px 12px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            font-size: 0.9rem;
+            color: #334155;
+            line-height: 2;
+        }}
+
+        .queue-item {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+        }}
+
+        .queue-remove-btn {{
+            background: none;
+            border: 1px solid #fca5a5;
+            color: #ef4444;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 2px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+        }}
+
+        .queue-remove-btn:hover {{
+            background: #ef4444;
+            color: white;
+            border-color: #ef4444;
+        }}
+
         .drop-zone {{
             max-width: 860px;
             margin: 0 auto 32px;
@@ -451,8 +511,14 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
         <button id="runBtn" class="run-btn" onclick="runAnalysis()">Run Analysis</button>
     </header>
 
+    <div class="queue-bar" id="queueBar" onclick="toggleQueue()">
+        <span id="queueLabel">Loading queue...</span>
+        <span class="queue-arrow" id="queueArrow">▶</span>
+    </div>
+    <div class="queue-list" id="queueList" style="display:none"></div>
+
     <div class="drop-zone" id="dropZone">
-        Drop a file here or <span class="browse-link">click to browse</span>
+        <span id="zoneText">Drop a file here or <span class="browse-link">click to browse</span></span>
         <p>Supports .txt and .pdf — saved to sample_docs/ ready for analysis</p>
         <input type="file" id="fileInput" accept=".txt,.pdf" multiple style="display:none">
     </div>
@@ -460,6 +526,39 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
     {sections_html}
 
     <script>
+        function loadQueue() {{
+            fetch('/queue')
+                .then(res => res.json())
+                .then(data => {{
+                    const count = data.files.length;
+                    const label = document.getElementById('queueLabel');
+                    const list = document.getElementById('queueList');
+                    label.textContent = count === 0
+                        ? 'No files queued in sample_docs/'
+                        : `${{count}} file${{count > 1 ? 's' : ''}} queued in sample_docs/`;
+                    list.innerHTML = data.files.map(f =>
+                        `<div class="queue-item">📄 ${{f}}<button class="queue-remove-btn" onclick="removeQueued('${{f}}')">Remove</button></div>`
+                    ).join('');
+                }});
+        }}
+
+        function removeQueued(filename) {{
+            fetch('/remove/' + encodeURIComponent(filename), {{ method: 'POST' }})
+                .then(res => res.json())
+                .then(() => loadQueue())
+                .catch(() => alert('Could not remove file.'));
+        }}
+
+        function toggleQueue() {{
+            const list = document.getElementById('queueList');
+            const arrow = document.getElementById('queueArrow');
+            const open = list.style.display !== 'none';
+            list.style.display = open ? 'none' : 'block';
+            arrow.style.transform = open ? '' : 'rotate(90deg)';
+        }}
+
+        loadQueue();
+
         function deleteDoc(stem, btn) {{
             if (!confirm('Delete this document from history?')) return;
             fetch('/delete/' + stem, {{ method: 'POST' }})
@@ -506,7 +605,7 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
                 ? `✓ "${{first}}" and ${{rest}} other file${{rest > 1 ? 's' : ''}} uploaded — click Run Analysis to extract`
                 : `✓ "${{first}}" uploaded — click Run Analysis to extract`;
             zone.classList.add('uploaded');
-            zone.innerHTML = label;
+            document.getElementById('zoneText').textContent = label;
         }}
 
         zone.addEventListener('click', () => fileInput.click());
@@ -541,7 +640,7 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
             }});
 
             Promise.all(uploads)
-                .then(() => updateZoneLabel())
+                .then(() => {{ updateZoneLabel(); loadQueue(); }})
                 .catch(() => {{
                     zone.textContent = 'Upload failed. Is the server running?';
                 }});

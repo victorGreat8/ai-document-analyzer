@@ -1,5 +1,0 @@
-Company: BananaSpace Corp
-CEO: Darth Vader
-Revenue: $900 billion
-
-The company plans to launch intergalactic bananas by 2027.

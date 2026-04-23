@@ -18,6 +18,7 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 
 RESULTS_DIR = os.path.abspath("results")
+os.makedirs(os.path.abspath("sample_docs"), exist_ok=True)
 
 
 @app.route("/")
@@ -51,6 +52,25 @@ def upload_file():
     return jsonify({"success": True, "filename": filename})
 
 
+@app.route("/queue")
+def queue():
+    """Returns the list of files currently in sample_docs/."""
+    files = sorted(f for f in os.listdir(SAMPLE_DOCS_DIR) if f.endswith((".txt", ".pdf")))
+    return jsonify({"files": files})
+
+
+@app.route("/remove/<filename>", methods=["POST"])
+def remove_queued(filename):
+    """Removes a file from sample_docs/."""
+    if not re.fullmatch(r"[\w\-. ]+", filename):
+        return jsonify({"error": "Invalid filename"}), 400
+
+    path = os.path.join(SAMPLE_DOCS_DIR, filename)
+    if os.path.exists(path):
+        os.remove(path)
+    return jsonify({"success": True})
+
+
 @app.route("/delete/<stem>", methods=["POST"])
 def delete_result(stem):
     """Deletes all JSON files for a document stem and rebuilds the report."""
@@ -75,8 +95,8 @@ def run_analysis():
 
     try:
         subprocess.run([sys.executable, "main.py"], check=True)
-    except subprocess.CalledProcessError as e:
-        return f"<p>Analysis failed: {e}</p><a href='/'>Go back</a>", 500
+    except subprocess.CalledProcessError:
+        return jsonify({"error": "Analysis failed. Check the terminal for details."}), 500
     return redirect("/")
 
 
