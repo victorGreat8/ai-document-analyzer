@@ -206,7 +206,7 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
             background-color: #0a0f1e;
             background-image: linear-gradient(rgba(10, 15, 30, 0.72), rgba(10, 15, 30, 0.72)), url('/static/bg.jpg');
             background-size: cover;
-            background-position: center;
+            background-position: 50% 50%;
             background-attachment: fixed;
             color: #1e293b;
             padding: 0;
@@ -340,6 +340,12 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
             padding: 28px;
             margin-bottom: 16px;
             box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }}
+
+        .card:hover {{
+            transform: scale(1.04) translateY(-8px);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.18);
         }}
 
         .card-header {{
@@ -916,6 +922,22 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
             const files = Array.from(e.dataTransfer.files);
             if (files.length) uploadFiles(files);
         }});
+        let mouseX = 0, mouseY = 0;
+
+        document.addEventListener('mousemove', (e) => {{
+            mouseX = (e.clientX / window.innerWidth - 0.5) * 60;
+            mouseY = (e.clientY / window.innerHeight - 0.5) * 60;
+            updateBackground();
+        }});
+
+        window.addEventListener('scroll', () => {{
+            updateBackground();
+        }});
+
+        function updateBackground() {{
+            const scrollY = window.scrollY * 0.15;
+            document.body.style.backgroundPosition = `calc(50% + ${{-mouseX}}px) calc(50% + ${{-mouseY + scrollY}}px)`;
+        }}
     </script>
 
     </div>
