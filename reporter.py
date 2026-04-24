@@ -426,6 +426,19 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
             cursor: pointer;
         }}
 
+        .header-right {{
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 6px;
+        }}
+
+        .export-hint {{
+            font-size: 0.72rem;
+            color: #94a3b8;
+            white-space: nowrap;
+        }}
+
         .export-btn {{
             background: none;
             border: 1px solid rgba(255,255,255,0.3);
@@ -594,11 +607,14 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
                 <h1>Document Analysis</h1>
                 <p>Last updated {today} &mdash; {total} document{"s" if total != 1 else ""} in history</p>
             </div>
-            <div class="header-actions">
-                <input type="text" id="searchInput" class="search-input" placeholder="Search documents..." oninput="filterCards()">
-                <button id="exportSelectedBtn" class="export-btn" onclick="exportSelected()" style="display:none">Export Selected</button>
-                <button class="export-btn" onclick="window.location='/export'">Export All</button>
-                <button id="runBtn" class="run-btn" onclick="runAnalysis()">Run Analysis</button>
+            <div class="header-right">
+                <div class="header-actions">
+                    <input type="text" id="searchInput" class="search-input" placeholder="Search documents..." oninput="filterCards()">
+                    <button id="runBtn" class="run-btn" onclick="runAnalysis()">Run Analysis</button>
+                    <button class="export-btn" onclick="window.location='/export'">Export All</button>
+                    <button id="exportSelectedBtn" class="export-btn" onclick="exportSelected()" style="visibility:hidden">Export Selected</button>
+                </div>
+                <span class="export-hint">or select cards below</span>
             </div>
         </div>
     </header>
@@ -622,7 +638,7 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
     <script>
         function updateExportBtn() {{
             const checked = document.querySelectorAll('.doc-checkbox:checked').length;
-            document.getElementById('exportSelectedBtn').style.display = checked > 0 ? '' : 'none';
+            document.getElementById('exportSelectedBtn').style.visibility = checked > 0 ? 'visible' : 'hidden';
         }}
 
         function exportSelected() {{
@@ -634,18 +650,26 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
         function filterCards() {{
             const query = document.getElementById('searchInput').value.toLowerCase().trim();
             const cards = document.querySelectorAll('.card');
+            const sections = document.querySelectorAll('details.run-section');
+
+            if (!query) {{
+                // Reset everything to default state
+                cards.forEach(card => card.style.display = '');
+                sections.forEach((s, i) => {{
+                    s.open = i === 0;
+                    s.style.display = '';
+                }});
+                return;
+            }}
 
             cards.forEach(card => {{
-                const matches = !query || card.innerText.toLowerCase().includes(query);
+                const matches = card.innerText.toLowerCase().includes(query);
                 card.style.display = matches ? '' : 'none';
-
-                // Open collapsed run sections if a card inside matches
                 const details = card.closest('details');
-                if (details && matches && query) details.open = true;
+                if (details && matches) details.open = true;
             }});
 
-            // Hide entire run sections if all their cards are hidden
-            document.querySelectorAll('.run-section').forEach(section => {{
+            sections.forEach(section => {{
                 const visible = section.querySelectorAll('.card:not([style*="none"])').length;
                 section.style.display = visible > 0 ? '' : 'none';
             }});
@@ -659,7 +683,7 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
                     const label = document.getElementById('queueLabel');
                     const list = document.getElementById('queueList');
                     label.textContent = count === 0
-                        ? 'No files queued in sample_docs/'
+                        ? 'No files queued'
                         : `${{count}} file${{count > 1 ? 's' : ''}} queued in sample_docs/`;
                     list.innerHTML = data.files.map(f =>
                         `<div class="queue-item">📄 ${{f}}<button class="queue-remove-btn" onclick="removeQueued('${{f}}')">Remove</button></div>`

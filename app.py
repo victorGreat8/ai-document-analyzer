@@ -55,6 +55,11 @@ def upload_file():
     return jsonify({"success": True, "filename": filename})
 
 
+def _truncate(text, max_words=50):
+    words = text.split()
+    return text if len(words) <= max_words else " ".join(words[:max_words]) + "..."
+
+
 @app.route("/export")
 def export_csv():
     """Exports analysis results as a CSV file. Optionally filter by stems."""
@@ -84,12 +89,12 @@ def export_csv():
                 "Title": d.get("title", ""),
                 "Type": d.get("document_type", ""),
                 "Sentiment": d.get("sentiment", ""),
-                "Summary": d.get("summary", ""),
-                "Key Points": "; ".join(d.get("key_points", [])),
-                "Action Items": "; ".join(d.get("action_items", [])),
-                "People": ", ".join(entities.get("people", [])),
-                "Organizations": ", ".join(entities.get("organizations", [])),
-                "Dates": ", ".join(entities.get("dates", [])),
+                "Summary": _truncate(d.get("summary", "")),
+                "Key Points": "\n".join(f"• {_truncate(p)}" for p in d.get("key_points", [])),
+                "Action Items": "\n".join(f"• {_truncate(a)}" for a in d.get("action_items", [])),
+                "People": "\n".join(entities.get("people", [])),
+                "Organizations": "\n".join(entities.get("organizations", [])),
+                "Dates": "\n".join(entities.get("dates", [])),
             })
         except (json.JSONDecodeError, OSError):
             continue
