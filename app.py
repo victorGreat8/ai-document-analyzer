@@ -7,12 +7,15 @@ Run with:
 Then open: http://localhost:8080
 """
 
+import csv
 import glob
+import io
+import json
 import os
 import re
 import subprocess
 import sys
-from flask import Flask, send_from_directory, redirect, request, jsonify
+from flask import Flask, send_from_directory, redirect, request, jsonify, Response
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -50,6 +53,57 @@ def upload_file():
     file.save(save_path)
 
     return jsonify({"success": True, "filename": filename})
+
+
+@app.route("/export")
+def export_csv():
+    """Exports analysis results as a CSV file. Optionally filter by stems."""
+    stems = request.args.get("stems", "").strip()
+    stem_filter = set(stems.split(",")) if stems else None
+
+    pattern = os.path.join(RESULTS_DIR, "*.json")
+    json_files = sorted(glob.glob(pattern), reverse=True)
+
+    seen, rows = set(), []
+    for filepath in json_files:
+        filename = os.path.basename(filepath)
+        match = re.search(r"(.+)_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.json$", filename)
+        if not match:
+            continue
+        stem = match.group(1)
+        if stem in seen:
+            continue
+        if stem_filter and stem not in stem_filter:
+            continue
+        seen.add(stem)
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                d = json.load(f)
+            entities = d.get("entities", {})
+            rows.append({
+                "Title": d.get("title", ""),
+                "Type": d.get("document_type", ""),
+                "Sentiment": d.get("sentiment", ""),
+                "Summary": d.get("summary", ""),
+                "Key Points": "; ".join(d.get("key_points", [])),
+                "Action Items": "; ".join(d.get("action_items", [])),
+                "People": ", ".join(entities.get("people", [])),
+                "Organizations": ", ".join(entities.get("organizations", [])),
+                "Dates": ", ".join(entities.get("dates", [])),
+            })
+        except (json.JSONDecodeError, OSError):
+            continue
+
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=["Title", "Type", "Sentiment", "Summary", "Key Points", "Action Items", "People", "Organizations", "Dates"])
+    writer.writeheader()
+    writer.writerows(rows)
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=document_analysis.csv"}
+    )
 
 
 @app.route("/queue")

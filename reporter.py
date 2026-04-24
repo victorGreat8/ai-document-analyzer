@@ -131,7 +131,7 @@ def _build_card(stem: str, data: dict) -> str:
             </div>"""
 
     return f"""
-        <div class="card" style="border-left: 6px solid {color}">
+        <div class="card" style="border-left: 6px solid {color}" data-stem="{stem}">
             <div class="card-header">
                 <div>
                     <div class="doc-title">{html.escape(data.get("title", "Untitled"))}</div>
@@ -158,7 +158,12 @@ def _build_card(stem: str, data: dict) -> str:
                 </table>
             </div>
             {actions_block}
-            <button class="delete-btn" onclick="deleteDoc('{stem}', this)">Delete</button>
+            <div class="card-footer">
+                <label class="card-checkbox">
+                    <input type="checkbox" class="doc-checkbox" onchange="updateExportBtn()"> Select
+                </label>
+                <button class="delete-btn" onclick="deleteDoc('{stem}', this)">Delete</button>
+            </div>
         </div>"""
 
 
@@ -174,20 +179,9 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
         count = len(docs)
         cards_html = "".join(_build_card(s, d) for s, d in docs)
 
-        if i == 0:
-            # Most recent — shown open
-            sections_html += f"""
-        <div class="run-section">
-            <div class="run-header">
-                <span class="run-date">{label}</span>
-                <span class="run-count">{count} document{"s" if count != 1 else ""}</span>
-            </div>
-            {cards_html}
-        </div>"""
-        else:
-            # Older runs — collapsible
-            sections_html += f"""
-        <details class="run-section">
+        open_attr = "open" if i == 0 else ""
+        sections_html += f"""
+        <details class="run-section" {open_attr}>
             <summary class="run-header">
                 <span class="run-date">{label}</span>
                 <span class="run-count">{count} document{"s" if count != 1 else ""}</span>
@@ -410,6 +404,45 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
             padding: 3px 0;
         }}
 
+        .card-footer {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+        }}
+
+        .card-checkbox {{
+            font-size: 0.9rem;
+            color: #64748b;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }}
+
+        .card-checkbox input[type="checkbox"] {{
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }}
+
+        .export-btn {{
+            background: none;
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 600;
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.15s;
+        }}
+
+        .export-btn:hover {{
+            background: rgba(255,255,255,0.1);
+        }}
+
         .delete-btn {{
             display: block;
             margin-top: 20px;
@@ -563,6 +596,8 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
             </div>
             <div class="header-actions">
                 <input type="text" id="searchInput" class="search-input" placeholder="Search documents..." oninput="filterCards()">
+                <button id="exportSelectedBtn" class="export-btn" onclick="exportSelected()" style="display:none">Export Selected</button>
+                <button class="export-btn" onclick="window.location='/export'">Export All</button>
                 <button id="runBtn" class="run-btn" onclick="runAnalysis()">Run Analysis</button>
             </div>
         </div>
@@ -585,6 +620,17 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
     {sections_html}
 
     <script>
+        function updateExportBtn() {{
+            const checked = document.querySelectorAll('.doc-checkbox:checked').length;
+            document.getElementById('exportSelectedBtn').style.display = checked > 0 ? '' : 'none';
+        }}
+
+        function exportSelected() {{
+            const stems = Array.from(document.querySelectorAll('.doc-checkbox:checked'))
+                .map(cb => cb.closest('.card').dataset.stem);
+            window.location = '/export?stems=' + stems.join(',');
+        }}
+
         function filterCards() {{
             const query = document.getElementById('searchInput').value.toLowerCase().trim();
             const cards = document.querySelectorAll('.card');

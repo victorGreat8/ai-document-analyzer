@@ -68,7 +68,7 @@ From there:
 3. Click **Run Analysis** to analyze any new files
 4. Results appear on the page grouped by run, newest at the top
 
-Already analyzed documents are skipped — only new files are sent to Claude. All results are stored as JSON in `results/` and displayed in a full history view with each run collapsible. Individual results can be deleted from the history.
+Already analyzed documents are skipped — only new files are sent to Claude. All results are stored as JSON in `results/` and displayed in a full history view with each run collapsible. Individual results can be deleted from the history. Use the search bar to filter by any text, and export results to CSV via Export All or by selecting individual documents.
 
 ## Customizing what gets extracted
 
