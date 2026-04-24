@@ -426,11 +426,11 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
             cursor: pointer;
         }}
 
-        .header-right {{
+        .export-all-col {{
             display: flex;
             flex-direction: column;
-            align-items: flex-end;
-            gap: 6px;
+            align-items: center;
+            gap: 4px;
         }}
 
         .export-hint {{
@@ -538,6 +538,39 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
             border-color: #ef4444;
         }}
 
+        .empty-state {{
+            max-width: 860px;
+            margin: 20px auto 40px;
+            text-align: center;
+            padding: 48px 32px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }}
+
+        .empty-icon {{
+            font-size: 3rem;
+            margin-bottom: 16px;
+        }}
+
+        .empty-state h2 {{
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 12px;
+        }}
+
+        .empty-state p {{
+            font-size: 0.95rem;
+            color: #94a3b8;
+            line-height: 1.7;
+        }}
+
+        .empty-sub {{
+            margin-top: 8px;
+            font-size: 0.88rem !important;
+        }}
+
         .drop-zone {{
             max-width: 860px;
             margin: 0 auto 32px;
@@ -607,14 +640,14 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
                 <h1>Document Analysis</h1>
                 <p>Last updated {today} &mdash; {total} document{"s" if total != 1 else ""} in history</p>
             </div>
-            <div class="header-right">
-                <div class="header-actions">
-                    <input type="text" id="searchInput" class="search-input" placeholder="Search documents..." oninput="filterCards()">
-                    <button id="runBtn" class="run-btn" onclick="runAnalysis()">Run Analysis</button>
+            <div class="header-actions">
+                <input type="text" id="searchInput" class="search-input" placeholder="Search documents..." oninput="filterCards()">
+                <button id="runBtn" class="run-btn" onclick="runAnalysis()">Run Analysis</button>
+                <div class="export-all-col">
                     <button class="export-btn" onclick="window.location='/export'">Export All</button>
-                    <button id="exportSelectedBtn" class="export-btn" onclick="exportSelected()" style="visibility:hidden">Export Selected</button>
+                    <span class="export-hint">or select cards below</span>
                 </div>
-                <span class="export-hint">or select cards below</span>
+                <button id="exportSelectedBtn" class="export-btn" onclick="exportSelected()" style="visibility:hidden">Export Selected</button>
             </div>
         </div>
     </header>
@@ -632,6 +665,14 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
         <p>Supports .txt and .pdf — saved to sample_docs/ ready for analysis</p>
         <input type="file" id="fileInput" accept=".txt,.pdf" multiple style="display:none">
     </div>
+
+    {"" if sections_html.strip() else '''
+    <div class="empty-state">
+        <div class="empty-icon">📄</div>
+        <h2>Welcome to Document Analyzer</h2>
+        <p>Drop a <strong>.txt</strong> or <strong>.pdf</strong> file in the box to get started.</p>
+        <p class="empty-sub">Then click <strong>Run Analysis</strong> to extract insights from your document.</p>
+    </div>'''}
 
     {sections_html}
 
@@ -694,7 +735,16 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
         function removeQueued(filename) {{
             fetch('/remove/' + encodeURIComponent(filename), {{ method: 'POST' }})
                 .then(res => res.json())
-                .then(() => loadQueue())
+                .then(() => fetch('/queue'))
+                .then(res => res.json())
+                .then(data => {{
+                    loadQueue();
+                    if (data.files.length === 0) {{
+                        uploadedNames.length = 0;
+                        zone.classList.remove('uploaded');
+                        document.getElementById('zoneText').innerHTML = 'Drop a file here or <span class="browse-link">click to browse</span>';
+                    }}
+                }})
                 .catch(() => alert('Could not remove file.'));
         }}
 
@@ -751,8 +801,8 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
             const first = uploadedNames[0];
             const rest = uploadedNames.length - 1;
             const label = rest > 0
-                ? `✓ "${{first}}" and ${{rest}} other file${{rest > 1 ? 's' : ''}} uploaded — click Run Analysis to extract`
-                : `✓ "${{first}}" uploaded — click Run Analysis to extract`;
+                ? `✓ "${{first}}" and ${{rest}} other file${{rest > 1 ? 's' : ''}} — Run Analysis to extract`
+                : `✓ "${{first}}" uploaded — click Run Analysis to extract or drop more files`;
             zone.classList.add('uploaded');
             document.getElementById('zoneText').textContent = label;
         }}

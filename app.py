@@ -26,9 +26,10 @@ os.makedirs(os.path.abspath("sample_docs"), exist_ok=True)
 
 @app.route("/")
 def index():
-    """Serves the history report."""
+    """Serves the history report, generating it if it doesn't exist yet."""
     if not os.path.exists(os.path.join(RESULTS_DIR, "index.html")):
-        return "<p>No results yet. Run <code>python main.py</code> first.</p>", 404
+        from reporter import generate_report
+        generate_report()
     return send_from_directory(RESULTS_DIR, "index.html")
 
 
