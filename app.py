@@ -150,6 +150,56 @@ def delete_result(stem):
     return jsonify({"success": True})
 
 
+@app.route("/reanalyze/<stem>", methods=["POST"])
+def reanalyze(stem):
+    """Clears the cached result for a document and re-analyzes it."""
+    if not re.fullmatch(r"[\w\-. ]+", stem):
+        return jsonify({"error": "Invalid document name"}), 400
+
+    # Find the source file in sample_docs/
+    source_path = None
+    for ext in (".txt", ".pdf"):
+        candidate = os.path.join(SAMPLE_DOCS_DIR, stem + ext)
+        if os.path.exists(candidate):
+            source_path = candidate
+            break
+
+    if not source_path:
+        return jsonify({"error": "Original file no longer in sample_docs/ — upload it again first."}), 404
+
+    # Delete cached JSON
+    for f in glob.glob(os.path.join(RESULTS_DIR, f"{stem}_*.json")):
+        os.remove(f)
+
+    # Re-analyze
+    try:
+        from pypdf import PdfReader
+        from analyzer import analyze_document
+        from saver import save_result
+        from reporter import generate_report
+
+        if source_path.endswith(".pdf"):
+            reader = PdfReader(source_path)
+            text = "\n".join(page.extract_text() or "" for page in reader.pages)
+        else:
+            with open(source_path, "r", encoding="utf-8") as f:
+                text = f.read()
+
+        if not text.strip():
+            return jsonify({"error": "No readable text found in this document."}), 400
+
+        data = analyze_document(text)
+        if not data:
+            return jsonify({"error": "Analysis returned no data. Try again."}), 500
+
+        save_result(stem + os.path.splitext(source_path)[1], data)
+        generate_report()
+        return jsonify({"success": True})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/run")
 def run_analysis():
     """Triggers main.py and redirects back to the index when done."""

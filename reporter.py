@@ -162,7 +162,10 @@ def _build_card(stem: str, data: dict) -> str:
                 <label class="card-checkbox">
                     <input type="checkbox" class="doc-checkbox" onchange="updateExportBtn()"> Select
                 </label>
-                <button class="delete-btn" onclick="deleteDoc('{stem}', this)">Delete</button>
+                <div class="card-actions">
+                    <button class="reanalyze-btn" onclick="reanalyzeDoc('{stem}', this)">Re-analyze</button>
+                    <button class="delete-btn" onclick="deleteDoc('{stem}', this)">Delete</button>
+                </div>
             </div>
         </div>"""
 
@@ -427,16 +430,18 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
         }}
 
         .export-all-col {{
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
+            position: relative;
         }}
 
         .export-hint {{
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
             font-size: 0.72rem;
             color: #94a3b8;
             white-space: nowrap;
+            margin-top: 4px;
         }}
 
         .export-btn {{
@@ -452,8 +457,40 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
             transition: background 0.15s;
         }}
 
-        .export-btn:hover {{
+        .export-btn:hover:not(:disabled) {{
             background: rgba(255,255,255,0.1);
+        }}
+
+        .export-btn:disabled {{
+            opacity: 0.35;
+            cursor: not-allowed;
+        }}
+
+        .card-actions {{
+            display: flex;
+            gap: 8px;
+        }}
+
+        .reanalyze-btn {{
+            background: none;
+            border: 2px solid #93c5fd;
+            color: #3b82f6;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 5px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+        }}
+
+        .reanalyze-btn:hover {{
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }}
+
+        .reanalyze-btn:disabled {{
+            opacity: 0.5;
+            cursor: not-allowed;
         }}
 
         .delete-btn {{
@@ -644,8 +681,8 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
                 <input type="text" id="searchInput" class="search-input" placeholder="Search documents..." oninput="filterCards()">
                 <button id="runBtn" class="run-btn" onclick="runAnalysis()">Run Analysis</button>
                 <div class="export-all-col">
-                    <button class="export-btn" onclick="window.location='/export'">Export All</button>
-                    <span class="export-hint">or select cards below</span>
+                    <button class="export-btn" onclick="window.location='/export'" {"disabled" if total == 0 else ""}>Export All</button>
+                    <span class="export-hint">or select specific cards</span>
                 </div>
                 <button id="exportSelectedBtn" class="export-btn" onclick="exportSelected()" style="visibility:hidden">Export Selected</button>
             </div>
@@ -723,12 +760,18 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
                     const count = data.files.length;
                     const label = document.getElementById('queueLabel');
                     const list = document.getElementById('queueList');
+                    const runBtn = document.getElementById('runBtn');
+
                     label.textContent = count === 0
                         ? 'No files queued'
                         : `${{count}} file${{count > 1 ? 's' : ''}} queued in sample_docs/`;
                     list.innerHTML = data.files.map(f =>
                         `<div class="queue-item">📄 ${{f}}<button class="queue-remove-btn" onclick="removeQueued('${{f}}')">Remove</button></div>`
                     ).join('');
+
+                    runBtn.disabled = count === 0;
+                    runBtn.style.opacity = count === 0 ? '0.35' : '';
+                    runBtn.style.cursor = count === 0 ? 'not-allowed' : '';
                 }});
         }}
 
@@ -757,6 +800,28 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
         }}
 
         loadQueue();
+
+        function reanalyzeDoc(stem, btn) {{
+            if (!confirm('Re-analyze this document? The current result will be replaced.')) return;
+            btn.disabled = true;
+            btn.textContent = 'Analyzing...';
+            fetch('/reanalyze/' + stem, {{ method: 'POST' }})
+                .then(res => res.json())
+                .then(data => {{
+                    if (data.error) {{
+                        alert(data.error);
+                        btn.disabled = false;
+                        btn.textContent = 'Re-analyze';
+                    }} else {{
+                        window.location.reload();
+                    }}
+                }})
+                .catch(() => {{
+                    alert('Re-analyze failed.');
+                    btn.disabled = false;
+                    btn.textContent = 'Re-analyze';
+                }});
+        }}
 
         function deleteDoc(stem, btn) {{
             if (!confirm('Delete this document from history?')) return;
