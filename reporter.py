@@ -131,7 +131,7 @@ def _build_card(stem: str, data: dict) -> str:
             </div>"""
 
     return f"""
-        <div class="card">
+        <div class="card" style="border-left: 6px solid {color}">
             <div class="card-header">
                 <div>
                     <div class="doc-title">{html.escape(data.get("title", "Untitled"))}</div>
@@ -206,45 +206,68 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
 
         body {{
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: #f1f5f9;
+            background-color: #0a0f1e;
+            background-image: linear-gradient(rgba(10, 15, 30, 0.72), rgba(10, 15, 30, 0.72)), url('/static/bg.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
             color: #1e293b;
-            padding: 40px 20px;
+            padding: 0;
         }}
 
         header {{
+            background: rgba(10, 15, 30, 0.85);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid rgba(56, 114, 224, 0.2);
+            padding: 20px 32px;
+            margin-bottom: 40px;
+            width: 100%;
+        }}
+
+        header h1 {{ color: white; }}
+        header p {{ color: #94a3b8; }}
+
+        .header-inner {{
             max-width: 860px;
-            margin: 0 auto 32px;
+            margin: 0 auto;
             display: flex;
             align-items: center;
             justify-content: space-between;
         }}
 
         header h1 {{
-            font-size: 1.8rem;
+            font-size: 1.6rem;
             font-weight: 700;
         }}
 
         header p {{
             color: #64748b;
             margin-top: 4px;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
+        }}
+
+        .page-content {{
+            padding: 0 20px 40px;
         }}
 
         .run-btn {{
             background: #1e293b;
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 12px 26px;
             border-radius: 8px;
             font-size: 0.9rem;
             font-weight: 600;
             cursor: pointer;
             text-decoration: none;
             white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transition: background 0.15s, box-shadow 0.15s;
         }}
 
         .run-btn:hover {{
             background: #334155;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }}
 
         .run-section {{
@@ -267,13 +290,13 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
         .run-date {{
             font-size: 1rem;
             font-weight: 700;
-            color: #1e293b;
+            color: white;
         }}
 
         .run-count {{
             font-size: 0.8rem;
-            color: #94a3b8;
-            background: #e2e8f0;
+            color: #cbd5e1;
+            background: rgba(255,255,255,0.15);
             padding: 2px 10px;
             border-radius: 999px;
         }}
@@ -281,7 +304,7 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
         details .run-header::before {{
             content: "▶";
             font-size: 0.7rem;
-            color: #94a3b8;
+            color: #cbd5e1;
             transition: transform 0.2s;
         }}
 
@@ -390,12 +413,14 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
             align-items: center;
             background: white;
             border-radius: 10px;
-            padding: 12px 18px;
+            padding: 14px 20px;
             font-size: 0.9rem;
             font-weight: 600;
             color: #1e293b;
             cursor: pointer;
             box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            border: 1px solid #e2e8f0;
+            transition: background 0.15s;
         }}
 
         .queue-bar:hover {{ background: #f8fafc; }}
@@ -445,14 +470,16 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
         .drop-zone {{
             max-width: 860px;
             margin: 0 auto 32px;
-            border: 2px dashed #cbd5e1;
+            border: 2px dashed #94a3b8;
             border-radius: 12px;
-            padding: 32px;
+            padding: 36px;
             text-align: center;
-            color: #94a3b8;
+            color: #64748b;
             font-size: 0.95rem;
+            background: white;
             transition: border-color 0.2s, background 0.2s;
             cursor: pointer;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
         }}
 
         .drop-zone.dragover {{
@@ -504,12 +531,16 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
 </head>
 <body>
     <header>
-        <div>
-            <h1>Document Analysis</h1>
-            <p>Last updated {today} &mdash; {total} document{"s" if total != 1 else ""} in history</p>
+        <div class="header-inner">
+            <div>
+                <h1>Document Analysis</h1>
+                <p>Last updated {today} &mdash; {total} document{"s" if total != 1 else ""} in history</p>
+            </div>
+            <button id="runBtn" class="run-btn" onclick="runAnalysis()">Run Analysis</button>
         </div>
-        <button id="runBtn" class="run-btn" onclick="runAnalysis()">Run Analysis</button>
     </header>
+
+    <div class="page-content">
 
     <div class="queue-bar" id="queueBar" onclick="toggleQueue()">
         <span id="queueLabel">Loading queue...</span>
@@ -653,5 +684,7 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
             if (files.length) uploadFiles(files);
         }});
     </script>
+
+    </div>
 </body>
 </html>"""
