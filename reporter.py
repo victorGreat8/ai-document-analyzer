@@ -227,6 +227,31 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
         header h1 {{ color: white; }}
         header p {{ color: #94a3b8; }}
 
+        .header-actions {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }}
+
+        .search-input {{
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-size: 0.9rem;
+            color: white;
+            outline: none;
+            width: 220px;
+            transition: border-color 0.2s, background 0.2s;
+        }}
+
+        .search-input::placeholder {{ color: #94a3b8; }}
+
+        .search-input:focus {{
+            border-color: rgba(255,255,255,0.5);
+            background: rgba(255,255,255,0.15);
+        }}
+
         .header-inner {{
             max-width: 860px;
             margin: 0 auto;
@@ -536,7 +561,10 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
                 <h1>Document Analysis</h1>
                 <p>Last updated {today} &mdash; {total} document{"s" if total != 1 else ""} in history</p>
             </div>
-            <button id="runBtn" class="run-btn" onclick="runAnalysis()">Run Analysis</button>
+            <div class="header-actions">
+                <input type="text" id="searchInput" class="search-input" placeholder="Search documents..." oninput="filterCards()">
+                <button id="runBtn" class="run-btn" onclick="runAnalysis()">Run Analysis</button>
+            </div>
         </div>
     </header>
 
@@ -557,6 +585,26 @@ def _build_html(grouped: dict[str, list[dict]]) -> str:
     {sections_html}
 
     <script>
+        function filterCards() {{
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+            const cards = document.querySelectorAll('.card');
+
+            cards.forEach(card => {{
+                const matches = !query || card.innerText.toLowerCase().includes(query);
+                card.style.display = matches ? '' : 'none';
+
+                // Open collapsed run sections if a card inside matches
+                const details = card.closest('details');
+                if (details && matches && query) details.open = true;
+            }});
+
+            // Hide entire run sections if all their cards are hidden
+            document.querySelectorAll('.run-section').forEach(section => {{
+                const visible = section.querySelectorAll('.card:not([style*="none"])').length;
+                section.style.display = visible > 0 ? '' : 'none';
+            }});
+        }}
+
         function loadQueue() {{
             fetch('/queue')
                 .then(res => res.json())

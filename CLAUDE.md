@@ -58,6 +58,16 @@ When making a bigger change — adding a feature, fixing multiple files, or chan
 
 This keeps the user informed and makes it easy to catch mistakes early.
 
+## When to suggest committing and pushing
+
+Proactively suggest a commit and push to GitHub when:
+- A feature is fully working and tested
+- A bug fix is complete and verified
+- A meaningful set of changes has built up across multiple steps
+- Before starting a new unrelated feature (clean checkpoint)
+
+Don't suggest committing after every single file edit — wait until there's something complete and working. When suggesting, briefly mention what would be included in the commit so the user can decide.
+
 ## Before committing and pushing to GitHub
 
 Always check if `README.md` needs to be updated to reflect any changes made. Update it if the usage, structure, features, or setup instructions have changed, then include it in the commit.
