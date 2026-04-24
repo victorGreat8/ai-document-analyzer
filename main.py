@@ -53,7 +53,15 @@ def main():
         print(f"\nReading document: {path}")
         document_text = read_document(path)
 
+        if not document_text.strip():
+            print(f"  Skipping (no readable text found): {path}")
+            continue
+
         extracted_data = analyze_document(document_text)
+        if not extracted_data:
+            print(f"  Skipping (analysis returned no data): {path}")
+            continue
+
         display_results(extracted_data)
 
         saved_path = save_result(filename, extracted_data)

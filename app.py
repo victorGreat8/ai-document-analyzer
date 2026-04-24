@@ -45,6 +45,10 @@ def upload_file():
 
     file = request.files["file"]
     filename = secure_filename(file.filename)
+
+    if not filename:
+        return jsonify({"error": "Invalid filename"}), 400
+
     ext = os.path.splitext(filename)[1].lower()
 
     if ext not in ALLOWED_EXTENSIONS:
